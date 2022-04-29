@@ -4,6 +4,11 @@ use self::inkwell::OptimizationLevel::Aggressive;
 use self::inkwell::context::Context;
 use self::inkwell::passes::{PassManagerBuilder, PassManager, PassRegistry};
 
+#[llvm_versions(13.0..=latest)]
+use self::inkwell::passes::PassBuilderOptions;
+use self::inkwell::targets::{RelocMode, CodeModel, Target, TargetMachine, InitializationConfig};
+use self::inkwell::OptimizationLevel;
+
 #[test]
 fn test_init_all_passes_for_module() {
     let context = Context::create();
@@ -22,7 +27,7 @@ fn test_init_all_passes_for_module() {
     pass_manager.add_always_inliner_pass();
     pass_manager.add_global_dce_pass();
     pass_manager.add_global_optimizer_pass();
-    #[cfg(not(any(feature = "llvm12-0", feature = "llvm13-0")))]
+    #[cfg(not(any(feature = "llvm12-0", feature = "llvm13-0", feature = "llvm14-0")))]
     pass_manager.add_ip_constant_propagation_pass();
     pass_manager.add_prune_eh_pass();
     pass_manager.add_ipsccp_pass();
@@ -63,9 +68,9 @@ fn test_init_all_passes_for_module() {
     pass_manager.add_scalar_repl_aggregates_pass_with_threshold(1);
     pass_manager.add_simplify_lib_calls_pass();
     pass_manager.add_tail_call_elimination_pass();
-    #[cfg(not(any(feature = "llvm12-0", feature = "llvm13-0")))]
+    #[cfg(not(any(feature = "llvm12-0", feature = "llvm13-0", feature = "llvm14-0")))]
     pass_manager.add_constant_propagation_pass();
-    #[cfg(any(feature = "llvm12-0", feature = "llvm13-0"))]
+    #[cfg(any(feature = "llvm12-0", feature = "llvm13-0", feature = "llvm14-0"))]
     pass_manager.add_instruction_simplify_pass();
     pass_manager.add_demote_memory_to_register_pass();
     pass_manager.add_verifier_pass();
@@ -147,9 +152,9 @@ fn test_pass_manager_builder() {
     let module2 = module.clone();
 
     // TODOC: In 3.6, 3.8, & 3.9 it returns false. Seems like a LLVM bug?
-    #[cfg(not(any(feature = "llvm3-7", feature = "llvm6-0", feature = "llvm7-0", feature = "llvm8-0", feature = "llvm9-0", feature = "llvm10-0", feature = "llvm11-0", feature = "llvm12-0", feature = "llvm13-0")))]
+    #[cfg(not(any(feature = "llvm3-7", feature = "llvm6-0", feature = "llvm7-0", feature = "llvm8-0", feature = "llvm9-0", feature = "llvm10-0", feature = "llvm11-0", feature = "llvm12-0", feature = "llvm13-0", feature = "llvm14-0")))]
     assert!(!module_pass_manager.run_on(&module));
-    #[cfg(any(feature = "llvm3-7", feature = "llvm6-0", feature = "llvm7-0", feature = "llvm8-0", feature = "llvm9-0", feature = "llvm10-0", feature = "llvm11-0", feature = "llvm12-0", feature = "llvm13-0"))]
+    #[cfg(any(feature = "llvm3-7", feature = "llvm6-0", feature = "llvm7-0", feature = "llvm8-0", feature = "llvm9-0", feature = "llvm10-0", feature = "llvm11-0", feature = "llvm12-0", feature = "llvm13-0", feature = "llvm14-0"))]
     assert!(module_pass_manager.run_on(&module));
 
     let lto_pass_manager = PassManager::create(());
@@ -178,4 +183,70 @@ fn test_pass_registry() {
     #[cfg(not(any(feature = "llvm3-6", feature = "llvm3-7", feature = "llvm3-8", feature = "llvm3-9",
                   feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
     pass_registry.initialize_aggressive_inst_combiner();
+}
+
+#[llvm_versions(13.0..=latest)]
+#[test]
+fn test_run_passes() {
+    let pass_options = PassBuilderOptions::create();
+    pass_options.set_verify_each(true);
+    pass_options.set_debug_logging(true);
+    pass_options.set_loop_interleaving(true);
+    pass_options.set_loop_vectorization(true);
+    pass_options.set_loop_slp_vectorization(true);
+    pass_options.set_loop_unrolling(true);
+    pass_options.set_forget_all_scev_in_loop_unroll(true);
+    pass_options.set_licm_mssa_opt_cap(1);
+    pass_options.set_licm_mssa_no_acc_for_promotion_cap(10);
+    pass_options.set_call_graph_profile(true);
+    pass_options.set_merge_functions(true);
+
+    let initialization_config = &inkwell::targets::InitializationConfig::default();
+    inkwell::targets::Target::initialize_all(initialization_config);
+    let context = Context::create();
+    let module = context.create_module("my_module");
+    let triple = inkwell::targets::TargetMachine::get_default_triple();
+    let target = inkwell::targets::Target::from_triple(&triple).unwrap();
+    let machine = target
+        .create_target_machine(
+            &triple,
+            //TODO : Add cpu features as optionals
+            "generic", //TargetMachine::get_host_cpu_name().to_string().as_str(),
+            "",        //TargetMachine::get_host_cpu_features().to_string().as_str(),
+            inkwell::OptimizationLevel::Default,
+            inkwell::targets::RelocMode::Default,
+            inkwell::targets::CodeModel::Default,
+        )
+        .unwrap();
+
+    module.run_passes("default<O2>", &machine, pass_options).unwrap();
+}
+
+#[llvm_versions(13.0..=latest)]
+#[test]
+fn  test_run_passes_invalid() {
+    let pass_options = PassBuilderOptions::create();
+
+    let initialization_config = &InitializationConfig::default();
+    Target::initialize_all(initialization_config);
+    let context = Context::create();
+    let module = context.create_module("my_module");
+    let triple = TargetMachine::get_default_triple();
+    let target = Target::from_triple(&triple).unwrap();
+    let machine = target
+        .create_target_machine(
+            &triple,
+            //TODO : Add cpu features as optionals
+            TargetMachine::get_host_cpu_name().to_string().as_str(),
+            TargetMachine::get_host_cpu_features().to_string().as_str(),
+            OptimizationLevel::Default,
+            RelocMode::Default,
+            CodeModel::Default,
+        )
+        .unwrap();
+
+    let res = module.run_passes("invalid_pass", &machine, pass_options);
+    assert!(res.is_err());
+    assert_eq!(res.unwrap_err().to_str().unwrap(), "unknown pass name 'invalid_pass'");
+    
 }
