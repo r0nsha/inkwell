@@ -1,11 +1,13 @@
 use llvm_sys::core::LLVMGetTypeKind;
 use llvm_sys::LLVMTypeKind;
 use llvm_sys::prelude::LLVMTypeRef;
+use llvm_sys_120::core::LLVMConstArray;
+use llvm_sys_120::prelude::LLVMValueRef;
 
 use crate::types::{IntType, VoidType, FunctionType, PointerType, VectorType, ArrayType, StructType, FloatType};
 use crate::types::MetadataType;
 use crate::types::traits::AsTypeRef;
-use crate::values::{BasicValue, BasicValueEnum, IntValue};
+use crate::values::{BasicValue, BasicValueEnum, IntValue, ArrayValue, AsValueRef};
 
 use std::convert::TryFrom;
 use std::iter::FromIterator;
@@ -458,6 +460,18 @@ impl<'ctx> BasicTypeEnum<'ctx> {
             BasicTypeEnum::PointerType(ty) => ty.const_zero().as_basic_value_enum(),
             BasicTypeEnum::StructType(ty) => ty.const_zero().as_basic_value_enum(),
             BasicTypeEnum::VectorType(ty) => ty.const_zero().as_basic_value_enum(),
+        }
+    }
+
+    /// Creates a constant `ArrayValue`.
+    pub fn const_array(self, values: &[BasicValueEnum<'ctx>]) -> ArrayValue<'ctx> {
+        let mut values: Vec<LLVMValueRef> = values.iter().map(|val| val.as_value_ref()).collect();
+        unsafe {
+            ArrayValue::new(LLVMConstArray(
+                self.as_type_ref(),
+                values.as_mut_ptr(),
+                values.len() as u32,
+            ))
         }
     }
 }
