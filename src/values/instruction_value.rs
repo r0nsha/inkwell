@@ -19,9 +19,9 @@ use llvm_sys::core::{LLVMIsAAtomicCmpXchgInst, LLVMIsAAtomicRMWInst};
 use llvm_sys::prelude::LLVMValueRef;
 use llvm_sys::LLVMOpcode;
 
-use crate::{basic_block::BasicBlock, types::AnyTypeEnum};
 use crate::values::traits::AsValueRef;
 use crate::values::{BasicValue, BasicValueEnum, BasicValueUse, MetadataValue, Value};
+use crate::{basic_block::BasicBlock, types::AnyTypeEnum};
 use crate::{AtomicOrdering, FloatPredicate, IntPredicate};
 
 // REVIEW: Split up into structs for SubTypes on InstructionValues?

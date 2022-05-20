@@ -1,4 +1,6 @@
-use llvm_sys::core::{LLVMConstArray, LLVMConstReal, LLVMConstRealOfStringAndSize};
+use llvm_sys::core::{
+};
+    LLVMConstArray, LLVMConstReal, LLVMConstRealOfStringAndSize, LLVMGetTypeKind,
 use llvm_sys::execution_engine::LLVMCreateGenericValueOfFloat;
 use llvm_sys::prelude::{LLVMTypeRef, LLVMValueRef};
 use llvm_sys_120::core::LLVMGetTypeKind;
@@ -7,7 +9,7 @@ use llvm_sys_120::LLVMTypeKind;
 use crate::context::ContextRef;
 use crate::types::enums::BasicMetadataTypeEnum;
 use crate::types::traits::AsTypeRef;
-use crate::types::{ArrayType, BasicTypeEnum, FunctionType, PointerType, Type, VectorType};
+use crate::types::{ArrayType, FunctionType, LLVMTypeKind, PointerType, Type, VectorType};
 use crate::values::{ArrayValue, AsValueRef, FloatValue, GenericValue, IntValue};
 use crate::AddressSpace;
 
