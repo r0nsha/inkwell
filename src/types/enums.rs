@@ -497,9 +497,9 @@ impl<'ctx> BasicTypeEnum<'ctx> {
         }
     }
 
+    /// Creates a constant `ArrayValue`.
     pub fn const_array(self, values: &[BasicValueEnum<'ctx>]) -> ArrayValue<'ctx> {
         let mut values: Vec<LLVMValueRef> = values.iter().map(|val| val.as_value_ref()).collect();
-
         unsafe {
             ArrayValue::new(LLVMConstArray(
                 self.as_type_ref(),
